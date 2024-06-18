@@ -10,4 +10,4 @@ At the bottom of the script, I use SQL Lite to answer some basic questions about
 
 ### Additional Notes
 
-- Different datasets might contain the same information, but have different encodings or data types. This is often the case when dealing with data that could be in varying languages.
+- Different datasets might contain the same information, but have different encodings or data types. This is often the case when dealing with data that could be in varying languages. In this dataset, this was partly due to the differences in endonyms and exonyms. Other times, it was simply because some sites tables consider all the necessary special characters while other skip some or all.

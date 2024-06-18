@@ -1,0 +1,6 @@
+version: '3'
+
+services:
+  capitals:
+    build:
+      context: ./app
