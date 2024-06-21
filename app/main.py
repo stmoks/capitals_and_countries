@@ -61,12 +61,24 @@ capitals_with_coordinates = capitals_df.join(cities_df[['city','country','latitu
 print(capitals_with_coordinates.glimpse())
 # %%
 
-capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitude').is_not_null()).with_columns(pl.col('longitude').str.replace('E','').str.replace('W','-').alias('latitude_sdc'),pl.col('latitude').str.replace('S','-').str.replace('N','').alias('longitude_sdc')).with_columns((pl.col('latitude_sdc') + ',' + pl.col('longitude_sdc')).alias('coords_sdc'))
+capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitude').is_not_null()).with_columns(pl.col('longitude').str.replace('E','').str.replace('W','-').alias('longitude_sdc'),pl.col('latitude').str.replace('S','-').str.replace('N','').alias('latitude_sdc')).with_columns((pl.col('latitude_sdc') + ',' + pl.col('longitude_sdc') + ',' + pl.col('city')).alias('coords_city_sdc'))
 
-m = folium.Map(location=[20, 0])
+m = folium.Map(location=[-29, 25], 
+    zoom_start= 5)
 
-capitals_with_coordinates_sdc['coords_sdc'].map_elements(lambda x: folium.Marker(x.split(',')[0:2]).add_to(m))
+
+
+capitals_with_coordinates_sdc.with_columns(
+    pl.col('coords_city_sdc').map_elements(lambda x: folium.CircleMarker(location = x.split(',')[0:2], radius=15,
+    fill=True,
+    popup=capitals_with_coordinates_sdc.filter(pl.col('city')== x.split(',')[2]).select('country')._repr_html_()).add_to(m)))
 m
 
+# what's in the news for a given country, as you hover over it
+# add flag of country over hover
+# 
+
+
+# x.split(',')[2]
 
 # %%
