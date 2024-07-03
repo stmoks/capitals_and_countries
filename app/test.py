@@ -10,6 +10,5 @@
 # list_of_tables = pd.read_html(flags_url)
 # news_date_history = list_of_tables[3]
 # reported_countries = list_of_tables[2].iloc[0,0]
-# %%
 
 
