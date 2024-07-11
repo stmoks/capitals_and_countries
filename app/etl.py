@@ -1,20 +1,17 @@
 #%%
-import pandas as pd
 import polars as pl
+import pandas as pd
 import sqlite3
 import os
 import glob
 import re
+from PIL import Image
+import io
 
 
+#%%
 # create db connection
 db_name = 'countries.db'
-
-# try:
-#     os.remove(db_name)
-#     print('The database has been successfully removed')
-# except Exception as e:
-#     print(f'The database could not be removed. Please consider whether it exists and try again \n{e}')
 
 db_conn = sqlite3.connect(db_name)
 db_cursor = sqlite3.Cursor(db_conn)
@@ -63,53 +60,64 @@ cities_df = cities_df.with_columns(
 countries_df = cities_df['country']
 
 #%%
-# add base data
+# join city and country data
 capitals_with_coordinates = capitals_df.join(cities_df[['city','country','latitude','longitude','population','elevation']],how='left',on = ['city','country'])
 
+# add combined data to database, schema on write
+capitals_with_coordinates = capitals_with_coordinates.with_columns(pl.lit(None).alias('flag'))
+capitals_with_coordinates.write_database(table_name='country_info',connection=f'sqlite:///{db_name}',if_table_exists='replace')
+#%%
+
+#create flags table
+drop_table_sql = f'''DROP TABLE IF EXISTS flags;'''
+create_table_sql = f'''CREATE TABLE flags (country VARCHAR(200), flag BLOB);'''
+try:
+   
+    db_cursor.execute(drop_table_sql)
+    db_cursor.execute(create_table_sql)
+    db_conn.commit()
+    print('Table created')
+except:
+    print('Cannot create table, check that you don"t have any errors in your code')
 
 # add flags to database
 path = 'flags'
 flags_list = []
 filenames = glob.glob(f'{path}/*.svg.png')
 flags_dict = {}
-
-create_table_sql = f'''CREATE TABLE flags (country VARCHAR(200), flag BLOB);'''
-try:
-    db_cursor.execute(create_table_sql)
-except:
-    print('Cannot create table, it might already exist')
-
-
 # change the path slashes, unix to windows
 filenames = [f.replace('\\','/') for f in filenames]
 
 # load all the flags into the database
-for file in filenames[0:3]:
+for file in filenames:
     try:
-        flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': file}
-        insert_data_sql = f'''INSERT INTO flags (country,flag) VALUES ("{flags_dict['country']}","{flags_dict['flag']}");'''
-        db_cursor.execute(insert_data_sql)
+        with open(file,'rb') as f:
+            # get rid of dots and square brackets, create country and flag pair
+            flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
+        insert_data_sql = '''INSERT INTO flags (country,flag) VALUES (?,?);'''
+        db_cursor.execute(insert_data_sql,(flags_dict['country'],flags_dict['flag']))
         print(f'added {flags_dict['country']}')
     except:
         print(f'Could not read {file}')
 
 
+pd.read_sql('SELECT * FROM flags',db_conn)
 
 
-# create table - schema on write, flexible data types
-create_table_sql = f'''DROP TABLE IF EXISTS country_info;
-CREATE TABLE country_info ({capitals_with_coordinates.columns};)
-'''
-db_cursor.execute(create_table_sql)
 
-add_column_sql = '''ALTER TABLE country_info ADD COLUMN flag;'''
+#%%
+try:
+    join_tables = f'''UPDATE country_info SET flag = (SELECT flag FROM flags WHERE (country_info.country = flags.country))'''
+    db_cursor.execute(join_tables)
+    db_conn.commit()
+    print('The country_info table ws updated with flags succesfully')
+except:
+    db_conn.rollback()
+    print('Had to rollback, could not update country_info table with flags')
 
-join_tables = f'''UPDATE country_info a SET flag = (SELECT flag FROM flags WHERE country = country_info.country)'''
+#%%
 
-
-db_cursor.execute(add_column_sql)
-
-
+# create countries ref table, fuzzy match to fix issue with flags table
 
 db_conn.close()
 
