@@ -7,7 +7,7 @@ import glob
 import re
 from PIL import Image
 import io
-from thefuzz import process,fuzz
+
 
 
 #%%
@@ -64,13 +64,14 @@ capitals_with_coordinates = capitals_df.join(cities_df[['city','country','latitu
 # add combined data to database, schema on write
 capitals_with_coordinates = capitals_with_coordinates.with_columns(pl.lit(None).alias('flag'))
 
-#%%
+
 #add sdc coordinates
 capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitude').is_not_null()).with_columns(pl.col('longitude').str.replace('E','').str.replace('W','-').alias('longitude_sdc'),pl.col('latitude').str.replace('S','-').str.replace('N','').alias('latitude_sdc')).with_columns((pl.col('latitude_sdc') + ',' + pl.col('longitude_sdc') + ',' + pl.col('city')).alias('coords_city_sdc'))
 
-#write country data to the db
+#%%
+# write country info to the db
 capitals_with_coordinates_sdc.write_database(table_name='country_info',connection=f'sqlite:///{db_name}',if_table_exists='replace')
-
+#%%
 #create flags table
 drop_table_sql = f'''DROP TABLE IF EXISTS flags;'''
 create_table_sql = f'''CREATE TABLE flags (country VARCHAR(200), flag BLOB);'''
@@ -79,8 +80,8 @@ try:
     db_cursor.execute(create_table_sql)
     db_conn.commit()
     print('Table created')
-except:
-    print('Cannot create table, check that you don"t have any errors in your code')
+except Exception as e:
+    print('Cannot create table:',e)
 
 # add flags to database
 path = 'app/flags'
@@ -99,28 +100,37 @@ for file in filenames:
         insert_data_sql = '''INSERT INTO flags (country,flag) VALUES (?,?);'''
         db_cursor.execute(insert_data_sql,(flags_dict['country'],flags_dict['flag']))
         print(f'added {flags_dict['country']}')
-    except:
-        print(f'Could not read {file}')
+    except Exception as e:
+        print(f'Could not read {file}:',e)
 
 
 pl.read_database('SELECT * FROM flags',db_conn)
 
 #%%
-# create countries ref table, fuzzy match to fix issue with flags table
-flags_df = pl.read_database('SELECT country FROM flags',db_conn)
-countries_ref_df = capitals_df.select(['country'])
+# load country mapping
+country_mapping = pl.read_csv('app/country_mapping_utf8.csv')
 
-#TODO create join on join table for flag names
-countries_ref_df.map_rows(lambda x: (process.extractOne(x[0],flags_df['country'],scorer=fuzz.token_set_ratio))[0] + ';' + x[0]).select(pl.col('map').str.split(';'))
+# can't write to sqllite directly with polars, so use sqlalchemy connection
+country_mapping.write_database('country_mapping',connection = f'sqlite:///{db_name}',if_table_exists = 'replace',engine='adbc')
+
+pl.read_database('SELECT * FROM country_mapping',db_conn)
 
 
 #%%
 try:
+    try:
+        add_column = f'''ALTER TABLE country_info ADD flag_country_reference VARCHAR;'''
+        db_cursor.execute(add_column)
+    except Exception as e:
+        print('Could not add column:',e)
+    join_tables = f'''UPDATE country_info SET flag_country_reference = (SELECT flag_country_reference FROM country_mapping WHERE (country_info.country = country_mapping.wiki_country_reference))'''
+    db_cursor.execute(join_tables)
+    pl.read_database('SELECT * FROM country_info',db_conn)
     join_tables = f'''UPDATE country_info SET flag = (SELECT flag FROM flags WHERE (country_info.country = flags.country))'''
     db_cursor.execute(join_tables)
     db_conn.commit()
     print('The country_info table ws updated with flags succesfully')
-except:
+except Exception as e:
     db_conn.rollback()
     print('Had to rollback, could not update country_info table with flags')
 
