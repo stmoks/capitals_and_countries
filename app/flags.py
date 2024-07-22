@@ -23,6 +23,7 @@ os.makedirs('flags', exist_ok=True)
 # Base URL for Wikipedia images
 base_url = 'https:'  
 
+# download flags
 for img in flag_images:
     img_url = base_url + img['src']
     country_name = img['alt']
@@ -34,12 +35,12 @@ for img in flag_images:
         img_response.raise_for_status()  
         
         # Save the image to the 'flags' directory
-        with open(os.path.join('flags', f'{country_name}.svg.png',), 'wb') as file:
-            file.write(img_response.content)
+        with open(os.path.join('flags', f'{country_name}.svg.png'), 'wb') as file:
+            file.write(img_response.content,encoding='utf')
         print(f'Downloaded {img_name}')
     except:
         print(f'Invalid URL {img_url}')
 
-print('All flags have been downloaded.')
+print('All valid flags have been downloaded.')
 
 # %%

@@ -7,6 +7,7 @@ import folium
 from PIL import Image
 
 #%%
+
 # create database connection
 db_name = 'capitals and countries.db'
 
@@ -24,16 +25,25 @@ m = folium.Map(location=[-29, 25],
 country_info = pl.read_database('SELECT * FROM country_info where flag IS NOT NULL',db_conn)
 
 #%%
-country_info.select(pl.col('flag'))[0]
+y=country_info.select(pl.col('flag'))[0,0]
 
-Image.open('flags/Armenia.svg.png')
+# Image.open('flags/Armenia.svg.png')
+
+# def show_flag(flag):
+#     with open(file=flag,mode='rb') as file:
+#         output = Image.open(file)
+#     return output
+# show_flag(y)
+
 #%%
-#TODO show the flags on the popup using PIL to read them into
+#TODO show the flags on the popup 
 country_info.with_columns(
     pl.col('coords_city_sdc').map_elements(lambda x: folium.CircleMarker(location = x.split(',')[0:2], radius=15,
     fill=True,
-    popup=country_info.filter(pl.col('city')== x.split(',')[2]).select(pl.col('flag').map_elements(lambda x: open(x,'rb'))).select(pl.col('flag').map_elements(lambda x: Image.open(x)))._repr_html_()).add_to(m)))
+    popup=country_info.filter(pl.col('city')== x.split(',')[2])._repr_html_()).add_to(m)))
 m
+
+# select(pl.col('flag').map_elements(lambda x: Image.open(x))).
 
 
 # %%
