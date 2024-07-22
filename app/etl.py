@@ -9,10 +9,9 @@ from PIL import Image
 import io
 
 
-
 #%%
 # create db connection
-db_name = 'countries.db'
+db_name = 'capitals and countries.db'
 
 db_conn = sqlite3.connect(db_name)
 db_cursor = sqlite3.Cursor(db_conn)
@@ -65,7 +64,7 @@ capitals_with_coordinates = capitals_df.join(cities_df[['city','country','latitu
 capitals_with_coordinates = capitals_with_coordinates.with_columns(pl.lit(None).alias('flag'))
 
 
-#add sdc coordinates
+# add sdc coordinates
 capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitude').is_not_null()).with_columns(pl.col('longitude').str.replace('E','').str.replace('W','-').alias('longitude_sdc'),pl.col('latitude').str.replace('S','-').str.replace('N','').alias('latitude_sdc')).with_columns((pl.col('latitude_sdc') + ',' + pl.col('longitude_sdc') + ',' + pl.col('city')).alias('coords_city_sdc'))
 
 #%%
@@ -84,7 +83,7 @@ except Exception as e:
     print('Cannot create table:',e)
 
 # add flags to database
-path = 'app/flags'
+path = 'flags'
 flags_list = []
 filenames = glob.glob(f'{path}/*.svg.png')
 flags_dict = {}
@@ -93,22 +92,24 @@ filenames = [f.replace('\\','/') for f in filenames]
 
 # load all the flags into the database
 for file in filenames:
+    flag_counter = 0
     try:
         with open(file,'rb') as f:
             # get rid of dots and square brackets, create country and flag pair
-            flags_dict = {'country':re.split('[/.\\[\\]]',file)[2],'flag': f.read()}
+            flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
         insert_data_sql = '''INSERT INTO flags (country,flag) VALUES (?,?);'''
         db_cursor.execute(insert_data_sql,(flags_dict['country'],flags_dict['flag']))
-        print(f'added {flags_dict['country']}')
+        flag_counter += 1
+        db_conn.commit()
     except Exception as e:
         print(f'Could not read {file}:',e)
-
+print(f'succesfully added {flag_counter} countries')
 
 pl.read_database('SELECT * FROM flags',db_conn)
 
 #%%
 # load country mapping
-country_mapping = pl.read_csv('app/country_mapping_utf8.csv')
+country_mapping = pl.read_csv('country_mapping_utf8.csv')
 
 # can't write to sqllite directly with polars, so use sqlalchemy connection
 country_mapping.write_database('country_mapping',connection = f'sqlite:///{db_name}',if_table_exists = 'replace',engine='adbc')
