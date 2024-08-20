@@ -1,18 +1,18 @@
 #%%
 import polars as pl
 import pandas as pd
-import sqlite3
 import os
 import glob
 import re
 from PIL import Image
 import io
+from sqlalchemy import create_engine,text
 
 
 #%%
 # create db connection
 # db_name = 'capitals and countries.db'
-psql_connection = {
+db_conn_dict = {
     'db_name': 'dumela',
     'schema_name': 'users',
     'username': 'postgres',
@@ -21,11 +21,6 @@ psql_connection = {
     'port': 5432
 }
 
-
-
-
-# db_conn = sqlite3.connect(db_name)
-# db_cursor = sqlite3.Cursor(db_conn)
 
 # read data from Wikipedia
 #%%
@@ -80,19 +75,30 @@ capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitud
 
 #%%
 # write country info to the db
-capitals_with_coordinates_sdc.write_database(table_name='country_info',connection=f'sqlite:///{db_name}',if_table_exists='replace')
+db_conn_uri = f"postgresql://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}"
+
+capitals_with_coordinates_sdc.write_database(table_name='reference.country_info',connection=db_conn_uri,if_table_exists='replace')
+
 #%%
 #create flags table
-drop_table_sql = f'''DROP TABLE IF EXISTS flags;'''
-create_table_sql = f'''CREATE TABLE flags (country VARCHAR(200), flag BLOB);'''
-try:
-    db_cursor.execute(drop_table_sql)
-    db_cursor.execute(create_table_sql)
-    db_conn.commit()
-    print('Table created')
-except Exception as e:
-    print('Cannot create table:',e)
+drop_table_sql = f'''DROP TABLE IF EXISTS reference.flags;'''
+create_table_sql = f'''CREATE TABLE reference.flags (country VARCHAR(200), flag TEXT);'''
 
+db_conn_engine = create_engine(f"postgresql+psycopg2://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}")
+
+with db_conn_engine.connect() as conn:
+    try:
+        conn = conn.execution_options(isolation_level='READ COMMITTED')
+        with conn.begin():
+            db_cursor = conn.connection.cursor()
+            db_cursor.execute(drop_table_sql)
+            db_cursor.execute(create_table_sql)
+            conn.commit()
+            print('Table created')
+    except Exception as e:
+        print('Cannot create table:',e)
+
+#%%
 # add flags to database
 path = 'flags'
 flags_list = []
@@ -104,28 +110,32 @@ filenames = [f.replace('\\','/') for f in filenames]
 # load all the flags into the database
 for file in filenames:
     flag_counter = 0
-    try:
-        with open(file,'rb') as f:
-            # get rid of dots and square brackets, create country and flag pair
-            flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
-        insert_data_sql = '''INSERT INTO flags (country,flag) VALUES (?,?);'''
-        db_cursor.execute(insert_data_sql,(flags_dict['country'],flags_dict['flag']))
-        flag_counter += 1
-        db_conn.commit()
-    except Exception as e:
-        print(f'Could not read {file}:',e)
-print(f'succesfully added {flag_counter} countries')
+    with db_conn_engine.connect() as conn:
+        conn = conn.execution_options(isolation_level='READ COMMITTED')
 
-pl.read_database('SELECT * FROM flags',db_conn)
+        with conn.begin():
+            try:
+                with open(file,'rb') as f:
+                    # get rid of dots and square brackets, create country and flag pair
+                    flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
+                    
+                insert_data_sql = "INSERT INTO reference.flags (country,flag) VALUES (:c,:f)"
+                conn.execute(text(insert_data_sql),{'c': flags_dict['country'],'f': flags_dict['flag']})
+                flag_counter += 1
+                conn.commit()
+            except Exception as e:
+                print(f'Could not read {file}:',e)
+        print(f'succesfully added {flag_counter} countries')
+
+pl.read_database_uri('SELECT * FROM reference.flags',db_conn_uri)
 
 #%%
 # load country mapping
 country_mapping = pl.read_csv('country_mapping_utf8.csv')
 
-# can't write to sqllite directly with polars, so use sqlalchemy connection
-country_mapping.write_database('country_mapping',connection = f'sqlite:///{db_name}',if_table_exists = 'replace',engine='adbc')
+country_mapping.write_database('reference.country_mapping',connection = db_conn_uri,if_table_exists = 'replace',engine='adbc')
 
-pl.read_database('SELECT * FROM country_mapping',db_conn)
+pl.read_database_uri('SELECT * FROM country_mapping',db_conn_uri)
 
 
 #%%

@@ -1,8 +1,12 @@
+adbc-driver-sqlite==1.1.0
+beautifulsoup4==4.12.3
+connectorx==0.3.3
 pandas==2.2.2
-unicode==2.9
-theFuzz==0.22.1
 polars==1.1.0
+psycopg2==2.9.9
 requests==2.32.3
 SQLAlchemy==2.0.30
-beautifulsoup4==4.12.3
-adbc-driver-sqlite==1.1.0
+theFuzz==0.22.1
+unicode==2.9
+
+
