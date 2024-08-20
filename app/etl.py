@@ -11,10 +11,21 @@ import io
 
 #%%
 # create db connection
-db_name = 'capitals and countries.db'
+# db_name = 'capitals and countries.db'
+psql_connection = {
+    'db_name': 'dumela',
+    'schema_name': 'users',
+    'username': 'postgres',
+    'password': 'superuser_password',
+    'host': 'localhost',
+    'port': 5432
+}
 
-db_conn = sqlite3.connect(db_name)
-db_cursor = sqlite3.Cursor(db_conn)
+
+
+
+# db_conn = sqlite3.connect(db_name)
+# db_cursor = sqlite3.Cursor(db_conn)
 
 # read data from Wikipedia
 #%%

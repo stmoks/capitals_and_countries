@@ -38,9 +38,9 @@ y=country_info.select(pl.col('flag'))[0,0]
 #%%
 #TODO show the flags on the popup 
 country_info.with_columns(
-    pl.col('coords_city_sdc').map_elements(lambda x: folium.CircleMarker(location = x.split(',')[0:2], radius=15,
+    pl.col('coords_city_sdc').map_elements(lambda x: folium.CircleMarker(location = x.split(',')[0:2], radius=0.5,
     fill=True,
-    popup=country_info.filter(pl.col('city')== x.split(',')[2])._repr_html_()).add_to(m)))
+    popup=country_info.filter(pl.col('city')== x.split(',')[2]).select(pl.col(['country','city']))._repr_html_()).add_to(m)))
 m
 
 # select(pl.col('flag').map_elements(lambda x: Image.open(x))).
