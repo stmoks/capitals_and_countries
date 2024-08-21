@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import glob
 import re
-from PIL import Image
 import io
 from sqlalchemy import create_engine,text
 
@@ -39,9 +38,10 @@ capitals_df
 # change column names
 capitals_df = pl.from_pandas(capitals_df,rechunk=True)
 capitals_df = capitals_df.rename({'City/Town':'city','Country/Territory':'country','Continent':'continent','Notes':'notes'})
+
 #%%
 cities_df = pl.from_pandas(cities_df,rechunk=True)
-cities_df = cities_df.rename({'City Name/s':'city','Country/Territory':'country','Continental Region':'continent','Population':'population','Latitude':'latitude','Longitude':'longitude','Elevation (m)':'elevation'})
+cities_df = cities_df.rename({'City name':'city','Country/territory':'country','Continental region':'continent','Population':'population','Latitude':'latitude','Longitude':'longitude','Elevation (m)':'elevation'})
 cities_df
 
 
@@ -125,6 +125,7 @@ for file in filenames:
                 conn.commit()
             except Exception as e:
                 print(f'Could not read {file}:',e)
+                conn.rollback()
         print(f'succesfully added {flag_counter} countries')
 
 pl.read_database_uri('SELECT * FROM reference.flags',db_conn_uri)
@@ -135,32 +136,36 @@ country_mapping = pl.read_csv('country_mapping_utf8.csv')
 
 country_mapping.write_database('reference.country_mapping',connection = db_conn_uri,if_table_exists = 'replace',engine='adbc')
 
-pl.read_database_uri('SELECT * FROM country_mapping',db_conn_uri)
+pl.read_database_uri('SELECT * FROM reference.country_mapping',db_conn_uri)
 
 
 #%%
-try:
+#TODO conn gets stuck
+with db_conn_engine.connect() as conn:
+    conn = conn.execution_options(isolation_level='READ COMMITTED')
+
     try:
-        add_column = f'''ALTER TABLE country_info ADD flag_country_reference VARCHAR;'''
+        add_column = f'''ALTER TABLE reference.country_info ADD flag_country_reference VARCHAR;'''
+        db_cursor = conn.connection.cursor()
         db_cursor.execute(add_column)
+   
+        join_tables = f'''UPDATE reference.country_info SET flag_country_reference = (SELECT flag_country_reference FROM reference.country_mapping WHERE (country_info.country = country_mapping.wiki_country_reference))'''
+        db_cursor.execute(join_tables)
+        
+        pl.read_database_uri('SELECT * FROM reference.country_info',db_conn_uri)
+        join_tables = f'''UPDATE reference.country_info SET flag = (SELECT flag FROM flags WHERE (country_info.country = flags.country))'''
+        db_cursor.execute(join_tables)
+        print('The country_info table was updated succesfully. The flag mappings have been added.')
+        conn.commit()
     except Exception as e:
-        print('Could not add column:',e)
-    join_tables = f'''UPDATE country_info SET flag_country_reference = (SELECT flag_country_reference FROM country_mapping WHERE (country_info.country = country_mapping.wiki_country_reference))'''
-    db_cursor.execute(join_tables)
-    pl.read_database('SELECT * FROM country_info',db_conn)
-    join_tables = f'''UPDATE country_info SET flag = (SELECT flag FROM flags WHERE (country_info.country = flags.country))'''
-    db_cursor.execute(join_tables)
-    db_conn.commit()
-    print('The country_info table ws updated with flags succesfully')
-except Exception as e:
-    db_conn.rollback()
-    print('Had to rollback, could not update country_info table with flags')
+        conn.rollback()
+        print('Had to rollback, could not update country_info table with flags\n',e)
 
 #%%
-pl.read_database('SELECT * FROM flags',db_conn)
+pl.read_database_uri('SELECT * FROM reference.flags',db_conn_uri)
 
-pl.read_database('SELECT * FROM country_info where flag IS NOT NULL',db_conn)
+pl.read_database_uri('SELECT * FROM reference.country_info where flag IS NOT NULL',db_conn_uri)
 
 # %%
-db_conn.close()
+conn.close()
 # %%
