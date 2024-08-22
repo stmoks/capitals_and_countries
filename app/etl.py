@@ -108,13 +108,12 @@ flags_dict = {}
 filenames = [f.replace('\\','/') for f in filenames]
 
 # load all the flags into the database
-for file in filenames:
-    flag_counter = 0
-    with db_conn_engine.connect() as conn:
-        conn = conn.execution_options(isolation_level='READ COMMITTED')
+with db_conn_engine.connect() as conn:
+    conn = conn.execution_options(isolation_level='READ COMMITTED')
 
-        with conn.begin():
-            try:
+    with conn.begin():
+            flag_counter = 0
+            for file in filenames:
                 with open(file,'rb') as f:
                     # get rid of dots and square brackets, create country and flag pair
                     flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
@@ -122,11 +121,8 @@ for file in filenames:
                 insert_data_sql = "INSERT INTO reference.flags (country,flag) VALUES (:c,:f)"
                 conn.execute(text(insert_data_sql),{'c': flags_dict['country'],'f': flags_dict['flag']})
                 flag_counter += 1
-                conn.commit()
-            except Exception as e:
-                print(f'Could not read {file}:',e)
-                conn.rollback()
-        print(f'succesfully added {flag_counter} countries')
+            conn.commit()
+print(f'succesfully added {flag_counter} countries')
 
 pl.read_database_uri('SELECT * FROM reference.flags',db_conn_uri)
 
@@ -140,11 +136,11 @@ pl.read_database_uri('SELECT * FROM reference.country_mapping',db_conn_uri)
 
 
 #%%
-#TODO conn gets stuck
+
 with db_conn_engine.connect() as conn:
     conn = conn.execution_options(isolation_level='READ COMMITTED')
 
-    try:
+    with conn.begin():
         add_column = f'''ALTER TABLE reference.country_info ADD flag_country_reference VARCHAR;'''
         db_cursor = conn.connection.cursor()
         db_cursor.execute(add_column)
@@ -152,18 +148,21 @@ with db_conn_engine.connect() as conn:
         join_tables = f'''UPDATE reference.country_info SET flag_country_reference = (SELECT flag_country_reference FROM reference.country_mapping WHERE (country_info.country = country_mapping.wiki_country_reference))'''
         db_cursor.execute(join_tables)
         
-        pl.read_database_uri('SELECT * FROM reference.country_info',db_conn_uri)
-        join_tables = f'''UPDATE reference.country_info SET flag = (SELECT flag FROM flags WHERE (country_info.country = flags.country))'''
+        join_tables = f'''UPDATE reference.country_info SET flag = (SELECT flag FROM reference.flags WHERE (country_info.country = flags.country))'''
         db_cursor.execute(join_tables)
+        
         print('The country_info table was updated succesfully. The flag mappings have been added.')
         conn.commit()
-    except Exception as e:
-        conn.rollback()
-        print('Had to rollback, could not update country_info table with flags\n',e)
+
+    # except Exception as e:
+    #     conn.rollback()
+    #     print('Had to rollback, could not update country_info table with flags\n',e)
 
 #%%
+print('flags in the db')
 pl.read_database_uri('SELECT * FROM reference.flags',db_conn_uri)
 
+print('countries with flags')
 pl.read_database_uri('SELECT * FROM reference.country_info where flag IS NOT NULL',db_conn_uri)
 
 # %%
