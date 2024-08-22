@@ -1,6 +1,8 @@
 FROM python:3
 
-COPY . app/
+COPY . .
+
+RUN pip install -r --no-cache-dir requirements.txt 
 
 
 

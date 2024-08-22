@@ -7,7 +7,6 @@ psycopg2==2.9.9
 pyarrow==16.1.0
 requests==2.32.3
 SQLAlchemy==2.0.30
-theFuzz==0.22.1
 unicode==2.9
 
 

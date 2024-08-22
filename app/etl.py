@@ -10,7 +10,6 @@ from sqlalchemy import create_engine,text
 
 #%%
 # create db connection
-# db_name = 'capitals and countries.db'
 db_conn_dict = {
     'db_name': 'dumela',
     'schema_name': 'users',
@@ -20,7 +19,9 @@ db_conn_dict = {
     'port': 5432
 }
 
+db_conn_uri = f"postgresql://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}"
 
+db_conn_engine = create_engine(f"postgresql+psycopg2://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}")
 # read data from Wikipedia
 #%%
 capitals_url = 'https://en.wikipedia.org/wiki/List_of_national_capitals'
@@ -75,7 +76,7 @@ capitals_with_coordinates_sdc = capitals_with_coordinates.filter(pl.col('latitud
 
 #%%
 # write country info to the db
-db_conn_uri = f"postgresql://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}"
+
 
 capitals_with_coordinates_sdc.write_database(table_name='reference.country_info',connection=db_conn_uri,if_table_exists='replace')
 
@@ -84,7 +85,6 @@ capitals_with_coordinates_sdc.write_database(table_name='reference.country_info'
 drop_table_sql = f'''DROP TABLE IF EXISTS reference.flags;'''
 create_table_sql = f'''CREATE TABLE reference.flags (country VARCHAR(200), flag TEXT);'''
 
-db_conn_engine = create_engine(f"postgresql+psycopg2://{db_conn_dict['username']}:{db_conn_dict['password']}@{db_conn_dict['host']}:{db_conn_dict['port']}/{db_conn_dict['db_name']}")
 
 with db_conn_engine.connect() as conn:
     try:
@@ -136,6 +136,7 @@ pl.read_database_uri('SELECT * FROM reference.country_mapping',db_conn_uri)
 
 
 #%%
+
 
 with db_conn_engine.connect() as conn:
     conn = conn.execution_options(isolation_level='READ COMMITTED')
