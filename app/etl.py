@@ -114,9 +114,8 @@ with db_conn_engine.connect() as conn:
     with conn.begin():
             flag_counter = 0
             for file in filenames:
-                with open(file,'rb') as f:
-                    # get rid of dots and square brackets, create country and flag pair
-                    flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': f.read()}
+                # get rid of dots and square brackets, create country and flag pair
+                flags_dict = {'country':re.split('[/.\\[\\]]',file)[1],'flag': file}
                     
                 insert_data_sql = "INSERT INTO reference.flags (country,flag) VALUES (:c,:f)"
                 conn.execute(text(insert_data_sql),{'c': flags_dict['country'],'f': flags_dict['flag']})
