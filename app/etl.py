@@ -1,10 +1,8 @@
 #%%
 import polars as pl
 import pandas as pd
-import os
 import glob
 import re
-import io
 from sqlalchemy import create_engine,text
 
 
