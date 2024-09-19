@@ -16,10 +16,16 @@ response.raise_for_status()  # Ensure the request was successful - only produces
 soup = BeautifulSoup(response.content, 'html.parser')
 
 #%%
-text = soup.getText()
-print(True) if 'South African' in text else print('Nope')
+topics_text = soup.find_all('p')
+topics = []
+for p in topics_text:
+    topics.append(p.text.strip())
+topics = list(set(topics))
+topics
 
-news_items = soup.find_all('ul')
-news_items
 
 # %%
+# soup_text = soup.getText()
+# news_items = soup.find_all('li')
+news_items = soup.find_all('li',lambda tx: 'March' in tx  )
+news_items

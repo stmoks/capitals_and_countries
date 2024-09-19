@@ -38,7 +38,7 @@ def prompt_model(prompt, model_name, hf_access_token, max_length=1024, device=No
 model_name = "apple/OpenELM-3B-Instruct"
 # Give your Hugging Face Token
 # hf_access_token = os.environ('hf_token')
-hf_access_token = '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'
+# hf_access_token = os.environ(hf_access_token)
 # Define Prompt
 prompt = "\nName all the countries in the world, list of current vs historical"
 print(prompt)
