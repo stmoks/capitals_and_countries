@@ -27,5 +27,12 @@ topics
 # %%
 # soup_text = soup.getText()
 # news_items = soup.find_all('li')
-news_items = soup.find_all('li',lambda tx: 'March' in tx  )
-news_items
+news_items = soup.find_all('li')
+news = []
+
+for k in news_items:
+    m = k.get_text()
+    if 'South Africa' in m:
+        news.append(k)    
+news
+
