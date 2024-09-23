@@ -30,9 +30,13 @@ topics
 news_items = soup.find_all('li')
 news = []
 
+links = []
 for k in news_items:
-    m = k.get_text()
+    m = k.get_text() 
     if 'South Africa' in m:
-        news.append(k)    
+        news.append(k)   
+        links.append(k.find_all('a')[0].get('href'))
+       
 news
+links
 
