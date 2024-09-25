@@ -10,5 +10,6 @@ torch==2.4.1
 transformers==4.44.2
 SQLAlchemy==2.0.30
 unicode==2.9
+urllib3==2.2.1
 
 

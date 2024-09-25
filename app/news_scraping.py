@@ -2,6 +2,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import urllib
 import re
 
 # Define the URL of the Wikipedia page
@@ -40,3 +41,10 @@ for k in news_items:
 news
 links
 
+#%%
+links = ['https://www.wikipedia.com/'] + links
+
+with urllib.request.urlopen() as response:
+    html = response.read()
+    sub_page = BeautifulSoup(html)
+    print(sub_page)
