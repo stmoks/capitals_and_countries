@@ -1,14 +1,27 @@
 #%%
 from typing import Union
 from fastapi import FastAPI
+from pydantic import BaseModel
+from pydantic_extra_types.country import CountryAlpha3
 
 # %%
-app = FastAPI()
+app = FastAPI(
+    title='Dumela API'
+)
+
+class Country(BaseModel):
+    country_iso: CountryAlpha3
+
 
 @app.get('/')
-def read_root():
-    return {'Hello': 'World'}
+def get_country_info(country_iso: str):
+    return {'country_iso': 'yeah'}
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+
+@app.get('/items/{item_id}')
+def read_item(item_id: int = 2, q: Union[str, None] = None):
+    return {'item_id': item_id, 'q': q}
+
+# @app.put('/items/{item_id}')
+# def update_item(item_id: int, item: Item):
+#     return {'item_name': item.is_offer, 'item_id': item_id}
