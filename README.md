@@ -1,18 +1,11 @@
-## Capitals and countries
-
-I like to think geography creates a good mental map for thinking about history and lanugage. Those are the two things I'm currently interested in so I created an interactive map that teaches you about a country and it's history as you scroll through.
 
 ## Capitals and countries
 
-I like to think geography creates a good mental map for thinking about history and lanugage. Those are the two things I'm currently interested in so I created an interactive map that teaches you about a country and it's history as you scroll through.
+I like to think geography creates a good mental map for thinking about history and language.
+So I'm putting together data from different sources
+to help create my own mental map of how the world works.
 
-By scraping data from Wikipedia links, I put together a table containing the capitals of the world along with basic information about them such as the country, continent, population, and coordinates associated with them.
-
-At the bottom of the script, I use SQL Lite to answer some basic questions about the data. The questions I answer include the following:
-
-1. Which countries have more than 1 capital city?
-2. What are the most populous capital cities?
-3. Which capital cities have the highest elevation?
+This is meant to serve as mostly a backend for collecting the data and serving it using FastAPI. In here, there are a few modules that will eventually be added to serve different informational verticals. 
 
 ### Additional Notes
 
