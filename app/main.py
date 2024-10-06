@@ -10,12 +10,13 @@ app = FastAPI(
 )
 
 class Country(BaseModel):
-    country_iso: CountryAlpha3
+    country: CountryAlpha3
 
 
 @app.get('/')
 def get_country_info(country_iso: str):
-    return {'country_iso': 'yeah'}
+    country = Country(country = country_iso)
+    return country
 
 
 @app.get('/items/{item_id}')
