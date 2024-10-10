@@ -32,6 +32,11 @@ cities_url = 'https://en.wikipedia.org/wiki/List_of_cities_by_elevation'
 list_of_tables = pd.read_html(cities_url)
 cities_df = list_of_tables[1]
 
+population_df =  pd.read_html('https://en.wikipedia.org/wiki/List_of_countries_by_population_(United_Nations)')[0]
+population_df.columns = ["country", "pop2022", "pop2023", "change", "continent", "region"]
+population_df["change"] = population_df["change"].str.rstrip("%").str.replace("−", "-").astype("float")
+
+
 
 # %%
 capitals_df
@@ -42,9 +47,18 @@ capitals_df = capitals_df.rename(
     {'City/Town': 'city', 'Country/Territory': 'country', 'Continent': 'continent', 'Notes': 'notes'})
 
 # %%
-cities_df = pl.from_pandas(cities_df, rechunk=True)
-cities_df = cities_df.rename({'City name': 'city', 'Country/territory': 'country', 'Continental region': 'continent','Population': 'population', 'Latitude': 'latitude', 'Longitude': 'longitude', 'Elevation (m)': 'elevation'})
+cities_df = pl.from_pandas(cities_df, rechunk=True) if isinstance(cities_df,pd.DataFrame) else cities_df
+cities_df = cities_df.rename({'City name': 'city', 'Country/territory': 'country', 'Continental region': 'continent','Population': 'city_population', 'Latitude': 'latitude', 'Longitude': 'longitude', 'Elevation (m)': 'elevation'}).cast({'city_population': int})
+
 cities_df
+
+#%%
+# update population values
+cities_df = pl.sql('''
+SELECT a.*,b.pop2023 as country_population FROM cities_df a LEFT JOIN population_df b ON a.country = b.country
+''').collect()
+
+
 
 
 # %%
@@ -68,7 +82,7 @@ countries_df = cities_df['country']
 # %%
 # join city and country data
 capitals_with_coordinates = capitals_df.join(
-    cities_df[['city', 'country', 'latitude', 'longitude', 'population', 'elevation']], how='left', on=['city', 'country'])
+    cities_df[['city', 'country', 'latitude', 'longitude', 'city_population', 'elevation','country_population']], how='left', on=['city', 'country'])
 
 # add combined data to database, schema on write
 capitals_with_coordinates = capitals_with_coordinates.with_columns(
