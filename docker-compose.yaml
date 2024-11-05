@@ -1,6 +1,8 @@
-
 services:
+
   capitals:
+    container_name: capitals
+    restart: always
     build:
       context: ./app
       dockerfile: Dockerfile
